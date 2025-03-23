@@ -15,3 +15,7 @@ Patches a conditional jump in grappling gun cooldown finalizer function with an 
 
 ## Download
 [Releases](https://github.com/x0reaxeax/Palworld-NoGrapplingGunCooldown/releases)
+
+
+## No UE4SS version
+[Standalone version](https://github.com/x0reaxeax/Palworld-NoGrapplingGunCooldown/tree/standalone) to use without UE4SS
