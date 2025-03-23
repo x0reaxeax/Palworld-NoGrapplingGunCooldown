@@ -4,11 +4,93 @@
 #include <Windows.h>
 
 #define MAYBE_UNUSED
+#define DLLEXPORT __declspec(dllexport)
+
+typedef DWORD (WINAPI *XInputGetState_t)(DWORD, LPVOID);
+typedef DWORD (WINAPI *XInputSetState_t)(DWORD, LPVOID);
+typedef DWORD (WINAPI *XInputGetCapabilities_t)(DWORD, DWORD, LPVOID);
+typedef VOID  (WINAPI *XInputEnable_t)(BOOL);
+
+HINSTANCE g_hOriginalDll = NULL;
+XInputGetState_t pXInputGetState = NULL;
+XInputSetState_t pXInputSetState = NULL;
+XInputGetCapabilities_t pXInputGetCapabilities = NULL;
+XInputEnable_t pXInputEnable = NULL;
+
+MAYBE_UNUSED VOID SideloadInit(
+    VOID
+) {
+    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\XINPUT1_3.dll");
+
+    if (NULL == g_hOriginalDll) {
+        return;
+    }
+
+    pXInputGetState = (XInputGetState_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputGetState"
+    );
+
+    pXInputSetState = (XInputSetState_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputSetState"
+    );
+
+    pXInputGetCapabilities = (XInputGetCapabilities_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputGetCapabilities"
+    );
+
+    pXInputEnable = (XInputEnable_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputEnable"
+    );
+}
+
+EXTERN_C DLLEXPORT DWORD WINAPI XInputGetState(
+    DWORD dwUserIndex,
+    LPVOID pState
+) {
+    if (NULL == pXInputGetState) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+    return pXInputGetState(dwUserIndex, pState);
+}
+
+EXTERN_C DLLEXPORT DWORD WINAPI XInputSetState(
+    DWORD dwUserIndex,
+    LPVOID pVibration
+) {
+    if (NULL == pXInputSetState) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+    return pXInputSetState(dwUserIndex, pVibration);
+}
+
+EXTERN_C DLLEXPORT DWORD WINAPI XInputGetCapabilities(
+    DWORD dwUserIndex,
+    DWORD dwFlags,
+    LPVOID pCapabilities
+) {
+    if (NULL == pXInputGetCapabilities) {
+        return ERROR_DEVICE_NOT_CONNECTED;
+    }
+    return pXInputGetCapabilities(dwUserIndex, dwFlags, pCapabilities);
+}
+
+EXTERN_C DLLEXPORT void WINAPI XInputEnable(
+    BOOL bEnable
+) {
+    if (NULL == pXInputEnable) {
+        return;
+    }
+    pXInputEnable(bEnable);
+}
 
 MAYBE_UNUSED LPBYTE AOBScan(
     VOID
 ) {
-    BYTE abTargetBytes[] = { 
+    BYTE abTargetBytes[] = {
         0x0F, 0x2F, 0xB6, 0x98, 0x04, 0x00, 0x00,   // comiss xmm6, dword ptr [rsi+498h]
         0x72, 0x20                                  // jb short loc_2E44F91
     };
