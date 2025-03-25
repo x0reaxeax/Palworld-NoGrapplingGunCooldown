@@ -6,65 +6,37 @@
 #define MAYBE_UNUSED
 #define DLLEXPORT __declspec(dllexport)
 
+HINSTANCE g_hOriginalDll = NULL;
+
+#if defined(TARGET_XINPUT)
 typedef DWORD (WINAPI *XInputGetState_t)(DWORD, LPVOID);
 typedef DWORD (WINAPI *XInputSetState_t)(DWORD, LPVOID);
 typedef DWORD (WINAPI *XInputGetCapabilities_t)(DWORD, DWORD, LPVOID);
 typedef VOID  (WINAPI *XInputEnable_t)(BOOL);
 
-HINSTANCE g_hOriginalDll = NULL;
-XInputGetState_t pXInputGetState = NULL;
-XInputSetState_t pXInputSetState = NULL;
-XInputGetCapabilities_t pXInputGetCapabilities = NULL;
-XInputEnable_t pXInputEnable = NULL;
-
-MAYBE_UNUSED VOID SideloadInit(
-    VOID
-) {
-    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\XINPUT1_3.dll");
-
-    if (NULL == g_hOriginalDll) {
-        return;
-    }
-
-    pXInputGetState = (XInputGetState_t) GetProcAddress(
-        g_hOriginalDll,
-        "XInputGetState"
-    );
-
-    pXInputSetState = (XInputSetState_t) GetProcAddress(
-        g_hOriginalDll,
-        "XInputSetState"
-    );
-
-    pXInputGetCapabilities = (XInputGetCapabilities_t) GetProcAddress(
-        g_hOriginalDll,
-        "XInputGetCapabilities"
-    );
-
-    pXInputEnable = (XInputEnable_t) GetProcAddress(
-        g_hOriginalDll,
-        "XInputEnable"
-    );
-}
+XInputGetState_t lpXInputGetState = NULL;
+XInputSetState_t lpXInputSetState = NULL;
+XInputGetCapabilities_t lpXInputGetCapabilities = NULL;
+XInputEnable_t lpXInputEnable = NULL;
 
 EXTERN_C DLLEXPORT DWORD WINAPI XInputGetState(
     DWORD dwUserIndex,
     LPVOID pState
 ) {
-    if (NULL == pXInputGetState) {
+    if (NULL == lpXInputGetState) {
         return ERROR_DEVICE_NOT_CONNECTED;
     }
-    return pXInputGetState(dwUserIndex, pState);
+    return lpXInputGetState(dwUserIndex, pState);
 }
 
 EXTERN_C DLLEXPORT DWORD WINAPI XInputSetState(
     DWORD dwUserIndex,
     LPVOID pVibration
 ) {
-    if (NULL == pXInputSetState) {
+    if (NULL == lpXInputSetState) {
         return ERROR_DEVICE_NOT_CONNECTED;
     }
-    return pXInputSetState(dwUserIndex, pVibration);
+    return lpXInputSetState(dwUserIndex, pVibration);
 }
 
 EXTERN_C DLLEXPORT DWORD WINAPI XInputGetCapabilities(
@@ -72,19 +44,132 @@ EXTERN_C DLLEXPORT DWORD WINAPI XInputGetCapabilities(
     DWORD dwFlags,
     LPVOID pCapabilities
 ) {
-    if (NULL == pXInputGetCapabilities) {
+    if (NULL == lpXInputGetCapabilities) {
         return ERROR_DEVICE_NOT_CONNECTED;
     }
-    return pXInputGetCapabilities(dwUserIndex, dwFlags, pCapabilities);
+    return lpXInputGetCapabilities(dwUserIndex, dwFlags, pCapabilities);
 }
 
 EXTERN_C DLLEXPORT void WINAPI XInputEnable(
     BOOL bEnable
 ) {
-    if (NULL == pXInputEnable) {
+    if (NULL == lpXInputEnable) {
         return;
     }
-    pXInputEnable(bEnable);
+    lpXInputEnable(bEnable);
+}
+#elif defined(TARGET_DBGCORE)
+typedef BOOL (WINAPI *MiniDumpReadDumpStream_t)(
+    PVOID,
+    ULONG,
+    LPVOID,
+    PVOID,
+    ULONG
+);
+
+typedef BOOL (WINAPI *MiniDumpWriteDump_t)(
+    HANDLE,
+    DWORD,
+    HANDLE,
+    UINT32,
+    LPVOID,
+    LPVOID,
+    LPVOID
+);
+
+MiniDumpReadDumpStream_t lpMiniDumpReadDumpStream = NULL;
+MiniDumpWriteDump_t lpMiniDumpWriteDump = NULL;
+
+EXTERN_C DLLEXPORT BOOL WINAPI MiniDumpReadDumpStream(
+    PVOID BaseOfDump,
+    ULONG StreamNumber,
+    LPVOID Dir,
+    PVOID Buffer,
+    ULONG BufferSize
+) {
+    if (NULL == lpMiniDumpReadDumpStream) {
+        return FALSE;
+    }
+    return lpMiniDumpReadDumpStream(
+        BaseOfDump,
+        StreamNumber,
+        Dir,
+        Buffer,
+        BufferSize
+    );
+}
+
+EXTERN_C DLLEXPORT BOOL WINAPI MiniDumpWriteDump(
+    HANDLE hProcess,
+    DWORD ProcessId,
+    HANDLE hFile,
+    UINT32 DumpType,
+    LPVOID ExceptionParam,
+    LPVOID UserStreamParam,
+    LPVOID CallbackParam
+) {
+    if (NULL == lpMiniDumpWriteDump) {
+        return FALSE;
+    }
+    return lpMiniDumpWriteDump(
+        hProcess,
+        ProcessId,
+        hFile,
+        DumpType,
+        ExceptionParam,
+        UserStreamParam,
+        CallbackParam
+    );
+}
+#else
+#error "Target not defined, select a valid configuration."
+#endif // TARGET
+
+MAYBE_UNUSED VOID SideloadInit(
+    VOID
+) {
+#if defined(TARGET_XINPUT)
+    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\XINPUT1_3.dll");
+#elif defined(TARGET_DBGCORE)
+    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\DBGCORE.DLL");
+#endif
+
+    if (NULL == g_hOriginalDll) {
+        return;
+    }
+
+#if defined(TARGET_XINPUT)
+    lpXInputGetState = (XInputGetState_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputGetState"
+    );
+
+    lpXInputSetState = (XInputSetState_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputSetState"
+    );
+
+    lpXInputGetCapabilities = (XInputGetCapabilities_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputGetCapabilities"
+    );
+
+    lpXInputEnable = (XInputEnable_t) GetProcAddress(
+        g_hOriginalDll,
+        "XInputEnable"
+    );
+
+#elif defined(TARGET_DBGCORE)
+    lpMiniDumpReadDumpStream = (MiniDumpReadDumpStream_t) GetProcAddress(
+        g_hOriginalDll,
+        "MiniDumpReadDumpStream"
+    );
+
+    lpMiniDumpWriteDump = (MiniDumpWriteDump_t) GetProcAddress(
+        g_hOriginalDll,
+        "MiniDumpWriteDump"
+    );
+#endif // TARGET
 }
 
 MAYBE_UNUSED LPBYTE AOBScan(
@@ -138,7 +223,7 @@ BOOL PatchCooldownTimer(
     };
 
     CONST BYTE abPatchBytes[sizeof(abOriginalBytes)] = {
-        0xEB, 0x00  // jmp short loc_2E44F91
+        0xEB, 0x00  // jmp short loc_2E44F71
     };
 
     LPBYTE lpBaseAddress = (LPBYTE) GetModuleHandle(NULL);
@@ -206,4 +291,3 @@ BOOL APIENTRY DllMain(
     }
     return TRUE;
 }
-
