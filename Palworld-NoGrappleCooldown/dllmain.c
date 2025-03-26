@@ -180,33 +180,38 @@ MAYBE_UNUSED LPBYTE AOBScan(
         0x72, 0x20                                  // jb short loc_2E44F91
     };
 
-    LPVOID lpBaseAddress = GetModuleHandle(NULL);
-    if (NULL == lpBaseAddress) {
+    HMODULE hModule = GetModuleHandleA(NULL);
+    if (NULL == hModule) {
         return NULL;
     }
 
-    MEMORY_BASIC_INFORMATION mbi = { 0 };
-    if (EXIT_SUCCESS != VirtualQuery(
-        lpBaseAddress,
-        &mbi,
-        sizeof(mbi)
-    )) {
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER) hModule;
+    if (IMAGE_DOS_SIGNATURE != pDosHeader->e_magic) {
         return NULL;
     }
 
-    LPBYTE lpEndAddress = (LPBYTE) mbi.BaseAddress + mbi.RegionSize;
+    PIMAGE_NT_HEADERS pNtHeaders = \
+        (PIMAGE_NT_HEADERS) ((LPBYTE) hModule + pDosHeader->e_lfanew);
+
+    if (IMAGE_NT_SIGNATURE != pNtHeaders->Signature) {
+        return NULL;
+    }
+
+    SIZE_T dwSizeOfImage = pNtHeaders->OptionalHeader.SizeOfImage;
+    LPBYTE lpStart = (LPBYTE) hModule;
+    LPBYTE lpEnd = lpStart + dwSizeOfImage;
 
     for (
-        LPBYTE lpCurrentAddress = (LPBYTE) lpBaseAddress;
-        lpCurrentAddress < lpEndAddress;
-        lpCurrentAddress++
+        LPBYTE lpAddress = lpStart; 
+        lpAddress < lpEnd - sizeof(abTargetBytes); 
+        ++lpAddress
     ) {
         if (EXIT_SUCCESS == memcmp(
-            lpCurrentAddress,
-            abTargetBytes,
+            lpAddress, 
+            abTargetBytes, 
             sizeof(abTargetBytes)
         )) {
-            return lpCurrentAddress;
+            return lpAddress;
         }
     }
 
@@ -216,14 +221,14 @@ MAYBE_UNUSED LPBYTE AOBScan(
 BOOL PatchCooldownTimer(
     VOID
 ) {
-    DWORD64 qwCooldownTimerOffset = 0x2E44F6F;
+    DWORD64 qwCooldownTimerOffset = 0x2E2E068;
 
     CONST BYTE abOriginalBytes[] = {
-        0x72, 0x20  // jb short loc_2E44F91
+        0x72, 0x20  // jb short loc_2E2E091
     };
 
     CONST BYTE abPatchBytes[sizeof(abOriginalBytes)] = {
-        0xEB, 0x00  // jmp short loc_2E44F71
+        0xEB, 0x00  // jmp short loc_2E2E071
     };
 
     LPBYTE lpBaseAddress = (LPBYTE) GetModuleHandle(NULL);
