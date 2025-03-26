@@ -238,7 +238,21 @@ BOOL PatchCooldownTimer(
 
     LPBYTE lpCooldownTimer = lpBaseAddress + qwCooldownTimerOffset;
 
-    if (EXIT_SUCCESS != memcmp(
+    MEMORY_BASIC_INFORMATION mbi = { 0 };
+    BOOL bValidMemory = TRUE;
+    if (0 == VirtualQuery(
+        lpCooldownTimer,
+        &mbi,
+        sizeof(mbi)
+    )) {
+        bValidMemory = FALSE;
+    } else {
+        if (MEM_COMMIT != mbi.State || PAGE_EXECUTE_READ != mbi.Protect) {
+            bValidMemory = FALSE;
+        }
+    }
+
+    if (!bValidMemory || EXIT_SUCCESS != memcmp(
         lpCooldownTimer,
         abOriginalBytes,
         sizeof(abOriginalBytes)
