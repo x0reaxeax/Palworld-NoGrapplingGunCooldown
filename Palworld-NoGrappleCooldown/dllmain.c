@@ -221,7 +221,7 @@ MAYBE_UNUSED LPBYTE AOBScan(
 BOOL PatchCooldownTimer(
     VOID
 ) {
-    DWORD64 qwCooldownTimerOffset = 0x2E2E068;
+    DWORD64 qwCooldownTimerOffset = 0x2E2E06F;
 
     CONST BYTE abOriginalBytes[] = {
         0x72, 0x20  // jb short loc_2E2E091
@@ -243,7 +243,7 @@ BOOL PatchCooldownTimer(
         abOriginalBytes,
         sizeof(abOriginalBytes)
     )) {
-        LPBYTE lpCooldownTimer = AOBScan();
+        lpCooldownTimer = AOBScan();
         if (NULL == lpCooldownTimer) {
             return FALSE;
         }
