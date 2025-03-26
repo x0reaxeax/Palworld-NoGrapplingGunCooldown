@@ -1,4 +1,4 @@
-// For Palworld v0.5.0.67935
+// For Palworld v0.5.1.68353
 // github.com/x0reaxeax
 
 #include <Windows.h>
