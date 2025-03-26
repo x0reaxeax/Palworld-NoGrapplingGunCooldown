@@ -61,7 +61,7 @@ BOOL PatchCooldownTimer(
     };
 
     CONST BYTE abPatchBytes[sizeof(abOriginalBytes)] = {
-        0xEB, 0x00  // jmp short loc_2E2E091
+        0xEB, 0x00  // jmp short loc_2E2E071
     };
 
     LPBYTE lpBaseAddress = (LPBYTE) GetModuleHandle(NULL);
