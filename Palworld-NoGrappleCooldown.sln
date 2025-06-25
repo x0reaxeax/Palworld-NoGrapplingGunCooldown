@@ -8,14 +8,14 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
-		Release (dbgcore.dll)|x64 = Release (dbgcore.dll)|x64
+		Release (normaliz.dll)|x64 = Release (normaliz.dll)|x64
 		Release (xinput1_3.dll)|x64 = Release (xinput1_3.dll)|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Debug|x64.ActiveCfg = Debug|x64
 		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Debug|x64.Build.0 = Debug|x64
-		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Release (dbgcore.dll)|x64.ActiveCfg = Release (dbgcore.dll)|x64
-		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Release (dbgcore.dll)|x64.Build.0 = Release (dbgcore.dll)|x64
+		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Release (normaliz.dll)|x64.ActiveCfg = Release (normaliz.dll)|x64
+		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Release (normaliz.dll)|x64.Build.0 = Release (normaliz.dll)|x64
 		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Release (xinput1_3.dll)|x64.ActiveCfg = Release (xinput1_3.dll)|x64
 		{948F3F13-A697-46DB-87C9-C9005B1D4BE0}.Release (xinput1_3.dll)|x64.Build.0 = Release (xinput1_3.dll)|x64
 	EndGlobalSection

@@ -1,4 +1,4 @@
-// For Palworld v0.5.1.68353
+// For Palworld v0.6.0.75365
 // github.com/x0reaxeax
 
 #include <Windows.h>
@@ -58,7 +58,7 @@ EXTERN_C DLLEXPORT void WINAPI XInputEnable(
     }
     lpXInputEnable(bEnable);
 }
-#elif defined(TARGET_DBGCORE)
+#elif defined(TARGET_NORMALIZ)
 typedef BOOL (WINAPI *MiniDumpReadDumpStream_t)(
     PVOID,
     ULONG,
@@ -77,52 +77,143 @@ typedef BOOL (WINAPI *MiniDumpWriteDump_t)(
     LPVOID
 );
 
-MiniDumpReadDumpStream_t lpMiniDumpReadDumpStream = NULL;
-MiniDumpWriteDump_t lpMiniDumpWriteDump = NULL;
+typedef INT (WINAPI *IdnToAscii_t)(
+    DWORD dwFlags,
+    LPCWSTR lpUnicodeCharStr,
+    INT cchUnicodeChar,
+    LPSTR lpAsciiCharStr,
+    INT cchAsciiChar
+);
 
-EXTERN_C DLLEXPORT BOOL WINAPI MiniDumpReadDumpStream(
-    PVOID BaseOfDump,
-    ULONG StreamNumber,
-    LPVOID Dir,
-    PVOID Buffer,
-    ULONG BufferSize
+typedef INT (WINAPI *IdnToNameprepUnicode_t)(
+    DWORD dwFlags,
+    LPCWSTR lpUnicodeCharStr,
+    INT cchUnicodeChar,
+    LPWSTR lpNameprepCharStr,
+    INT cchNameprepChar
+);
+
+typedef INT (WINAPI *IdnToUnicode_t)(
+    DWORD dwFlags,
+    LPCSTR lpAsciiCharStr,
+    INT cchAsciiChar,
+    LPWSTR lpUnicodeCharStr,
+    INT cchUnicodeChar
+);
+
+typedef BOOL (WINAPI *IsNormalizedString_t)(
+    DWORD dwNormalizationForm,
+    LPCWSTR lpString,
+    INT cchString
+);
+
+typedef INT (WINAPI *NormalizeString_t)(
+    DWORD dwNormalizationForm,
+    LPCWSTR lpSrcString,
+    INT cchSrcString,
+    LPWSTR lpDstString,
+    INT cchDstString
+);
+
+IdnToAscii_t lpIdnToAscii = NULL;
+IdnToNameprepUnicode_t lpIdnToNameprepUnicode = NULL;
+IdnToUnicode_t lpIdnToUnicode = NULL;
+IsNormalizedString_t lpIsNormalizedString = NULL;
+NormalizeString_t lpNormalizeString = NULL;
+
+#pragma warning (disable : 28251)   // Inconsistent annotation
+#pragma warning (disable : 6054)    // String might not be zero-terminated
+#pragma warning (disable : 4273)    // Inconsistent dll linkage
+#pragma warning (disable : 4028)    // Formal parameter list different from declaration
+EXTERN_C DLLEXPORT INT WINAPI IdnToAscii(
+    DWORD dwFlags,
+    LPCWSTR lpUnicodeCharStr,
+    INT cchUnicodeChar,
+    LPSTR lpAsciiCharStr,
+    INT cchAsciiChar
 ) {
-    if (NULL == lpMiniDumpReadDumpStream) {
-        return FALSE;
+    if (NULL == lpIdnToAscii) {
+        return 0;
     }
-    return lpMiniDumpReadDumpStream(
-        BaseOfDump,
-        StreamNumber,
-        Dir,
-        Buffer,
-        BufferSize
+    return lpIdnToAscii(
+        dwFlags, 
+        lpUnicodeCharStr, 
+        cchUnicodeChar, 
+        lpAsciiCharStr, 
+        cchAsciiChar
     );
 }
 
-EXTERN_C DLLEXPORT BOOL WINAPI MiniDumpWriteDump(
-    HANDLE hProcess,
-    DWORD ProcessId,
-    HANDLE hFile,
-    UINT32 DumpType,
-    LPVOID ExceptionParam,
-    LPVOID UserStreamParam,
-    LPVOID CallbackParam
+EXTERN_C DLLEXPORT INT WINAPI IdnToNameprepUnicode(
+    DWORD dwFlags,
+    LPCWSTR lpUnicodeCharStr,
+    INT cchUnicodeChar,
+    LPWSTR lpNameprepCharStr,
+    INT cchNameprepChar
 ) {
-    if (NULL == lpMiniDumpWriteDump) {
-        return FALSE;
+    if (NULL == lpIdnToNameprepUnicode) {
+        return 0;
     }
-    return lpMiniDumpWriteDump(
-        hProcess,
-        ProcessId,
-        hFile,
-        DumpType,
-        ExceptionParam,
-        UserStreamParam,
-        CallbackParam
+    return lpIdnToNameprepUnicode(
+        dwFlags, 
+        lpUnicodeCharStr, 
+        cchUnicodeChar, 
+        lpNameprepCharStr, 
+        cchNameprepChar
     );
 }
+
+EXTERN_C DLLEXPORT INT WINAPI IdnToUnicode(
+    DWORD dwFlags,
+    LPCSTR lpAsciiCharStr,
+    INT cchAsciiChar,
+    LPWSTR lpUnicodeCharStr,
+    INT cchUnicodeChar
+) {
+    if (NULL == lpIdnToUnicode) {
+        return 0;
+    }
+    return lpIdnToUnicode(
+        dwFlags, 
+        lpAsciiCharStr, 
+        cchAsciiChar, 
+        lpUnicodeCharStr, 
+        cchUnicodeChar
+    );
+}
+
+EXTERN_C DLLEXPORT BOOL WINAPI IsNormalizedString(
+    DWORD dwNormalizationForm,
+    LPCWSTR lpString,
+    INT cchString
+) {
+    if (NULL == lpIsNormalizedString) {
+        return FALSE;
+    }
+    return lpIsNormalizedString(dwNormalizationForm, lpString, cchString);
+}
+
+EXTERN_C DLLEXPORT INT WINAPI NormalizeString(
+    DWORD dwNormalizationForm,
+    LPCWSTR lpSrcString,
+    INT cchSrcString,
+    LPWSTR lpDstString,
+    INT cchDstString
+) {
+    if (NULL == lpNormalizeString) {
+        return 0;
+    }
+    return lpNormalizeString(
+        dwNormalizationForm, 
+        lpSrcString, 
+        cchSrcString, 
+        lpDstString, 
+        cchDstString
+    );
+}
+
 #else
-#error "Target not defined, select a valid configuration."
+    #error "Target not defined, select a valid configuration."
 #endif // TARGET
 
 MAYBE_UNUSED VOID SideloadInit(
@@ -130,8 +221,8 @@ MAYBE_UNUSED VOID SideloadInit(
 ) {
 #if defined(TARGET_XINPUT)
     g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\XINPUT1_3.dll");
-#elif defined(TARGET_DBGCORE)
-    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\DBGCORE.DLL");
+#elif defined(TARGET_NORMALIZ)
+    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\NORMALIZ.DLL");
 #endif
 
     if (NULL == g_hOriginalDll) {
@@ -159,25 +250,45 @@ MAYBE_UNUSED VOID SideloadInit(
         "XInputEnable"
     );
 
-#elif defined(TARGET_DBGCORE)
-    lpMiniDumpReadDumpStream = (MiniDumpReadDumpStream_t) GetProcAddress(
+#elif defined(TARGET_NORMALIZ)
+    lpIdnToAscii = (IdnToAscii_t) GetProcAddress(
         g_hOriginalDll,
-        "MiniDumpReadDumpStream"
+        "IdnToAscii"
     );
-
-    lpMiniDumpWriteDump = (MiniDumpWriteDump_t) GetProcAddress(
+    lpIdnToNameprepUnicode = (IdnToNameprepUnicode_t) GetProcAddress(
         g_hOriginalDll,
-        "MiniDumpWriteDump"
+        "IdnToNameprepUnicode"
     );
+    lpIdnToUnicode = (IdnToUnicode_t) GetProcAddress(
+        g_hOriginalDll,
+        "IdnToUnicode"
+    );
+    lpIsNormalizedString = (IsNormalizedString_t) GetProcAddress(
+        g_hOriginalDll,
+        "IsNormalizedString"
+    );
+    lpNormalizeString = (NormalizeString_t) GetProcAddress(
+        g_hOriginalDll,
+        "NormalizeString"
+    );
+#else
+    #error "Target not defined, select a valid configuration."
 #endif // TARGET
 }
 
 MAYBE_UNUSED LPBYTE AOBScan(
     VOID
 ) {
-    BYTE abTargetBytes[] = {
-        0x0F, 0x2F, 0xB6, 0x98, 0x04, 0x00, 0x00,   // comiss xmm6, dword ptr [rsi+498h]
-        0x72, 0x20                                  // jb short loc_2E44F91
+    CONST SIZE_T ccbComissInstSize = sizeof(
+        (BYTE[]) { 0x0F, 0x2F, 0xB6, 0x98, 0x04, 0x00, 0x00 }
+    );                                              // comiss xmm6, dword ptr [rsi+498h]
+
+    BYTE abTargetBytesComissXmm6[] = {
+        0x0F, 0x2F, 0xB6                            // comiss xmm6, dword ptr [rsi+???]
+    };
+    
+    BYTE abTargetBytesJbShort[] = {
+        0x72, 0x20                                  // jb short +0x20
     };
 
     HMODULE hModule = GetModuleHandleA(NULL);
@@ -203,15 +314,21 @@ MAYBE_UNUSED LPBYTE AOBScan(
 
     for (
         LPBYTE lpAddress = lpStart; 
-        lpAddress < lpEnd - sizeof(abTargetBytes); 
+        lpAddress < lpEnd - ccbComissInstSize + sizeof(abTargetBytesJbShort);
         ++lpAddress
     ) {
         if (EXIT_SUCCESS == memcmp(
             lpAddress, 
-            abTargetBytes, 
-            sizeof(abTargetBytes)
+            abTargetBytesComissXmm6,
+            sizeof(abTargetBytesComissXmm6)
         )) {
-            return lpAddress;
+            if (EXIT_SUCCESS == memcmp(
+                lpAddress + ccbComissInstSize,
+                abTargetBytesJbShort,
+                sizeof(abTargetBytesJbShort)
+            )) {
+                return lpAddress;
+            }
         }
     }
 
@@ -221,14 +338,14 @@ MAYBE_UNUSED LPBYTE AOBScan(
 BOOL PatchCooldownTimer(
     VOID
 ) {
-    DWORD64 qwCooldownTimerOffset = 0x2E2E06F;
+    DWORD64 qwCooldownTimerOffset = 0x2F2D223;
 
     CONST BYTE abOriginalBytes[] = {
-        0x72, 0x20  // jb short loc_2E2E091
+        0x72, 0x20  // jb short +0x20
     };
 
     CONST BYTE abPatchBytes[sizeof(abOriginalBytes)] = {
-        0xEB, 0x00  // jmp short loc_2E2E071
+        0xEB, 0x00  // jmp short +0x00
     };
 
     LPBYTE lpBaseAddress = (LPBYTE) GetModuleHandle(NULL);
