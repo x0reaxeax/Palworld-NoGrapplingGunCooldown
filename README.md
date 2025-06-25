@@ -4,11 +4,11 @@ Patches a conditional jump in grappling gun cooldown finalizer function with an 
 
 ## Usage
 ### Pre-built binary
- * Download `XINPUT1_3.dll` and place it in `Palworld\Pal\Binaries\Win64`.
+ * Download either `XINPUT1_3.dll` or `NORMALIZ.dll` and place it in `Palworld\Pal\Binaries\Win64`.
 
 ### Build from source
  1. Build using Visual Studio.
- 2. Copy `XINPUT1_3.dll` to `Palworld\Pal\Binaries\Win64`.
+ 2. Copy either `XINPUT1_3.dll` or `NORMALIZ.dll` to `Palworld\Pal\Binaries\Win64`.
 
 
 ## Download
