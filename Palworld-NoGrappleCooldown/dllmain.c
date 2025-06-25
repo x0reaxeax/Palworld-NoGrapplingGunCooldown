@@ -8,9 +8,18 @@
 MAYBE_UNUSED LPBYTE AOBScan(
     VOID
 ) {
-    BYTE abTargetBytes[] = {
-        0x0F, 0x2F, 0xB6, 0x98, 0x04, 0x00, 0x00,   // comiss xmm6, dword ptr [rsi+498h]
-        0x72, 0x20                                  // jb short loc_2E2E091
+    CONST SIZE_T ccbComissInstSize = sizeof(
+        (BYTE[]) {
+        0x0F, 0x2F, 0xB6, 0x98, 0x04, 0x00, 0x00
+    }
+    );                                              // comiss xmm6, dword ptr [rsi+498h]
+
+    BYTE abTargetBytesComissXmm6[] = {
+        0x0F, 0x2F, 0xB6                            // comiss xmm6, dword ptr [rsi+???]
+    };
+
+    BYTE abTargetBytesJbShort[] = {
+        0x72, 0x20                                  // jb short +0x20
     };
 
     HMODULE hModule = GetModuleHandleA(NULL);
@@ -36,15 +45,21 @@ MAYBE_UNUSED LPBYTE AOBScan(
 
     for (
         LPBYTE lpAddress = lpStart;
-        lpAddress < lpEnd - sizeof(abTargetBytes);
+        lpAddress < lpEnd - ccbComissInstSize + sizeof(abTargetBytesJbShort);
         ++lpAddress
     ) {
         if (EXIT_SUCCESS == memcmp(
             lpAddress,
-            abTargetBytes,
-            sizeof(abTargetBytes)
+            abTargetBytesComissXmm6,
+            sizeof(abTargetBytesComissXmm6)
         )) {
-            return lpAddress;
+            if (EXIT_SUCCESS == memcmp(
+                lpAddress + ccbComissInstSize,
+                abTargetBytesJbShort,
+                sizeof(abTargetBytesJbShort)
+            )) {
+                return lpAddress;
+            }
         }
     }
 
@@ -54,14 +69,14 @@ MAYBE_UNUSED LPBYTE AOBScan(
 BOOL PatchCooldownTimer(
     VOID
 ) {
-    DWORD64 qwCooldownTimerOffset = 0x2E2E06F;
+    DWORD64 qwCooldownTimerOffset = 0x2F2D223;
 
     CONST BYTE abOriginalBytes[] = {
-        0x72, 0x20  // jb short loc_2E2E091
+        0x72, 0x20  // jb short +0x20
     };
 
     CONST BYTE abPatchBytes[sizeof(abOriginalBytes)] = {
-        0xEB, 0x00  // jmp short loc_2E2E071
+        0xEB, 0x00  // jmp short +0x00
     };
 
     LPBYTE lpBaseAddress = (LPBYTE) GetModuleHandle(NULL);
@@ -122,6 +137,7 @@ BOOL PatchCooldownTimer(
     )) {
         return FALSE;
     }
+
     return TRUE;
 }
 
