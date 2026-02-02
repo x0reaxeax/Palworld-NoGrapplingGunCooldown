@@ -211,7 +211,69 @@ EXTERN_C DLLEXPORT INT WINAPI NormalizeString(
         cchDstString
     );
 }
+#elif defined(TARGET_DBGCORE)
+typedef BOOL (WINAPI *MiniDumpReadDumpStream_t)(
+    PVOID,
+    ULONG,
+    LPVOID,
+    PVOID,
+    ULONG
+);
 
+typedef BOOL (WINAPI *MiniDumpWriteDump_t)(
+    HANDLE,
+    DWORD,
+    HANDLE,
+    UINT32,
+    LPVOID,
+    LPVOID,
+    LPVOID
+);
+
+MiniDumpReadDumpStream_t lpMiniDumpReadDumpStream = NULL;
+MiniDumpWriteDump_t lpMiniDumpWriteDump = NULL;
+
+EXTERN_C DLLEXPORT BOOL WINAPI MiniDumpReadDumpStream(
+    PVOID BaseOfDump,
+    ULONG StreamNumber,
+    LPVOID Dir,
+    PVOID Buffer,
+    ULONG BufferSize
+) {
+    if (NULL == lpMiniDumpReadDumpStream) {
+        return FALSE;
+    }
+    return lpMiniDumpReadDumpStream(
+        BaseOfDump,
+        StreamNumber,
+        Dir,
+        Buffer,
+        BufferSize
+    );
+}
+
+EXTERN_C DLLEXPORT BOOL WINAPI MiniDumpWriteDump(
+    HANDLE hProcess,
+    DWORD ProcessId,
+    HANDLE hFile,
+    UINT32 DumpType,
+    LPVOID ExceptionParam,
+    LPVOID UserStreamParam,
+    LPVOID CallbackParam
+) {
+    if (NULL == lpMiniDumpWriteDump) {
+        return FALSE;
+    }
+    return lpMiniDumpWriteDump(
+        hProcess,
+        ProcessId,
+        hFile,
+        DumpType,
+        ExceptionParam,
+        UserStreamParam,
+        CallbackParam
+    );
+}
 #else
     #error "Target not defined, select a valid configuration."
 #endif // TARGET
@@ -223,6 +285,8 @@ MAYBE_UNUSED VOID SideloadInit(
     g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\XINPUT1_3.dll");
 #elif defined(TARGET_NORMALIZ)
     g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\NORMALIZ.DLL");
+#elif defined(TARGET_DBGCORE)
+    g_hOriginalDll = LoadLibraryA("C:\\Windows\\System32\\DBGCORE.DLL");
 #endif
 
     if (NULL == g_hOriginalDll) {
@@ -270,6 +334,16 @@ MAYBE_UNUSED VOID SideloadInit(
     lpNormalizeString = (NormalizeString_t) GetProcAddress(
         g_hOriginalDll,
         "NormalizeString"
+    );
+#elif defined(TARGET_DBGCORE)
+    lpMiniDumpReadDumpStream = (MiniDumpReadDumpStream_t) GetProcAddress(
+    g_hOriginalDll,
+    "MiniDumpReadDumpStream"
+    );
+
+    lpMiniDumpWriteDump = (MiniDumpWriteDump_t) GetProcAddress(
+        g_hOriginalDll,
+        "MiniDumpWriteDump"
     );
 #else
     #error "Target not defined, select a valid configuration."
