@@ -7,6 +7,8 @@
 
 typedef WORD UMASK16, *PUMASK16, *LPUMASK16;
 typedef UMASK16 UMASK, *PUMASK, *LPUMASK;
+typedef CONST UMASK CUMASK, *PCUMASK, *LPCUMASK;
+typedef CONST UMASK16 CUMASK16, *PCUMASK16, *LPCUMASK16;
 typedef UINT64 QWORD64, *PQWORD64, *LPQWORD64;
 
 typedef struct _SEARCH_INFO {
@@ -25,7 +27,7 @@ CONST UMASK awSignature[] = {
 MAYBE_UNUSED LPCBYTE SearchForMaskedSignature(
     _In_ LPCVOID lpSearchBase,
     _In_ SIZE_T dwSearchSize,
-    _In_ PUMASK awSignature,
+    _In_ PCUMASK awSignature,
     _In_ SIZE_T dwSignatureSize
 ) {
     for (SIZE_T i = 0; i < dwSearchSize - dwSignatureSize; i++) {
