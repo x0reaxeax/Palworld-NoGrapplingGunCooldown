@@ -1,4 +1,4 @@
-// For Palworld v0.6.0.75365
+// For Palworld v1.0.0.1XXX
 // github.com/x0reaxeax
 
 #include <Windows.h>
@@ -6,7 +6,77 @@
 #define MAYBE_UNUSED
 #define DLLEXPORT __declspec(dllexport)
 
+typedef WORD UMASK16, *PUMASK16, *LPUMASK16;
+typedef UMASK16 UMASK, *PUMASK, *LPUMASK;
+typedef CONST UMASK16 *PCUMASK16, *LPCUMASK16;
+typedef CONST UMASK *PCUMASK, *LPCUMASK;
+typedef UINT64 QWORD64, *PQWORD64, *LPQWORD64;
+
+typedef struct _SEARCH_INFO {
+    LPCVOID lpSearchBase;
+    SIZE_T dwSearchSize;
+} SEARCH_INFO, * PSEARCH_INFO, * LPSEARCH_INFO;;
+
+const UMASK awSignature[] = {
+    0x0F, 0x2F, 0xB7, '??', '??', 0x00, 0x00,   // comiss xmm6,[rdi+???]
+    0x72, '??',                                 // jb short +???
+    0x48, 0x8D                                  // lea64
+};
+
+#define JMP_OFFSET  0x7U
+
 HINSTANCE g_hOriginalDll = NULL;
+
+MAYBE_UNUSED LPCBYTE SearchForMaskedSignature(
+    _In_ LPCVOID lpSearchBase,
+    _In_ SIZE_T dwSearchSize,
+    _In_ PCUMASK awSignature,
+    _In_ SIZE_T dwSignatureSize
+) {
+    for (SIZE_T i = 0; i < dwSearchSize - dwSignatureSize; i++) {
+        BOOLEAN bMatch = TRUE;
+        for (SIZE_T j = 0; j < dwSignatureSize; j++) {
+            if ('??' != awSignature[j] && ((LPCBYTE) lpSearchBase)[i + j] != (BYTE) awSignature[j]) {
+                bMatch = FALSE;
+                break;
+            }
+        }
+        if (bMatch) {
+            return (LPCBYTE) lpSearchBase + i;
+        }
+    }
+    return NULL;
+}
+
+MAYBE_UNUSED static BOOLEAN GetSearchInfo(
+    _Out_ LPSEARCH_INFO lpSearchInfo
+) {
+    if (NULL == lpSearchInfo) {
+        return FALSE;
+    }
+
+    ZeroMemory(lpSearchInfo, sizeof(SEARCH_INFO));
+
+    HMODULE hModule = GetModuleHandleA(NULL);
+    if (NULL == hModule) {
+        return FALSE;
+    }
+
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER) hModule;
+    if (IMAGE_DOS_SIGNATURE != pDosHeader->e_magic) {
+        return FALSE;
+    }
+
+    PIMAGE_NT_HEADERS pNtHeaders = \
+        (PIMAGE_NT_HEADERS) ((LPBYTE) hModule + pDosHeader->e_lfanew);
+    if (IMAGE_NT_SIGNATURE != pNtHeaders->Signature) {
+        return FALSE;
+    }
+
+    lpSearchInfo->lpSearchBase = (LPCVOID) hModule;
+    lpSearchInfo->dwSearchSize = pNtHeaders->OptionalHeader.SizeOfImage;
+    return TRUE;
+}
 
 #if defined(TARGET_XINPUT)
 typedef DWORD (WINAPI *XInputGetState_t)(DWORD, LPVOID);
@@ -350,70 +420,9 @@ MAYBE_UNUSED VOID SideloadInit(
 #endif // TARGET
 }
 
-MAYBE_UNUSED LPBYTE AOBScan(
-    VOID
-) {
-    CONST SIZE_T ccbComissInstSize = sizeof(
-        (BYTE[]) { 0x0F, 0x2F, 0xB6, 0x98, 0x04, 0x00, 0x00 }
-    );                                              // comiss xmm6, dword ptr [rsi+498h]
-
-    BYTE abTargetBytesComissXmm6[] = {
-        0x0F, 0x2F, 0xB6                            // comiss xmm6, dword ptr [rsi+???]
-    };
-    
-    BYTE abTargetBytesJbShort[] = {
-        0x72, 0x20                                  // jb short +0x20
-    };
-
-    HMODULE hModule = GetModuleHandleA(NULL);
-    if (NULL == hModule) {
-        return NULL;
-    }
-
-    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER) hModule;
-    if (IMAGE_DOS_SIGNATURE != pDosHeader->e_magic) {
-        return NULL;
-    }
-
-    PIMAGE_NT_HEADERS pNtHeaders = \
-        (PIMAGE_NT_HEADERS) ((LPBYTE) hModule + pDosHeader->e_lfanew);
-
-    if (IMAGE_NT_SIGNATURE != pNtHeaders->Signature) {
-        return NULL;
-    }
-
-    SIZE_T dwSizeOfImage = pNtHeaders->OptionalHeader.SizeOfImage;
-    LPBYTE lpStart = (LPBYTE) hModule;
-    LPBYTE lpEnd = lpStart + dwSizeOfImage;
-
-    for (
-        LPBYTE lpAddress = lpStart; 
-        lpAddress < lpEnd - ccbComissInstSize + sizeof(abTargetBytesJbShort);
-        ++lpAddress
-    ) {
-        if (EXIT_SUCCESS == memcmp(
-            lpAddress, 
-            abTargetBytesComissXmm6,
-            sizeof(abTargetBytesComissXmm6)
-        )) {
-            if (EXIT_SUCCESS == memcmp(
-                lpAddress + ccbComissInstSize,
-                abTargetBytesJbShort,
-                sizeof(abTargetBytesJbShort)
-            )) {
-                return lpAddress;
-            }
-        }
-    }
-
-    return NULL;
-}
-
 BOOL PatchCooldownTimer(
     VOID
 ) {
-    DWORD64 qwCooldownTimerOffset = 0x2F2D223;
-
     CONST BYTE abOriginalBytes[] = {
         0x72, 0x20  // jb short +0x20
     };
@@ -427,38 +436,38 @@ BOOL PatchCooldownTimer(
         return FALSE;
     }
 
-    LPBYTE lpCooldownTimer = lpBaseAddress + qwCooldownTimerOffset;
+    SEARCH_INFO searchInfo = { 0 };
+    if (!GetSearchInfo(&searchInfo)) {
+        return FALSE;
+    }
+
+    LPBYTE lpCooldownTimer = (LPBYTE) SearchForMaskedSignature(
+        searchInfo.lpSearchBase,
+        searchInfo.dwSearchSize,
+        awSignature,
+        ARRAYSIZE(awSignature)
+    );
+
+    if (NULL == lpCooldownTimer) {
+        return FALSE;
+    }
 
     MEMORY_BASIC_INFORMATION mbi = { 0 };
-    BOOL bValidMemory = TRUE;
     if (0 == VirtualQuery(
         lpCooldownTimer,
         &mbi,
         sizeof(mbi)
     )) {
-        bValidMemory = FALSE;
+        return FALSE;
     } else {
         if (MEM_COMMIT != mbi.State || PAGE_EXECUTE_READ != mbi.Protect) {
-            bValidMemory = FALSE;
-        }
-    }
-
-    if (!bValidMemory || EXIT_SUCCESS != memcmp(
-        lpCooldownTimer,
-        abOriginalBytes,
-        sizeof(abOriginalBytes)
-    )) {
-        lpCooldownTimer = AOBScan();
-        if (NULL == lpCooldownTimer) {
             return FALSE;
         }
-
-        lpCooldownTimer += 7;
     }
 
     DWORD dwOldProtect;
     if (!VirtualProtect(
-        lpCooldownTimer,
+        (LPVOID) ((QWORD64) lpCooldownTimer + JMP_OFFSET),
         sizeof(abOriginalBytes),
         PAGE_EXECUTE_READWRITE,
         &dwOldProtect
@@ -467,13 +476,13 @@ BOOL PatchCooldownTimer(
     }
 
     memcpy(
-        lpCooldownTimer,
+        (LPVOID) ((QWORD64) lpCooldownTimer + JMP_OFFSET),
         abPatchBytes,
         sizeof(abPatchBytes)
     );
 
     if (!VirtualProtect(
-        lpCooldownTimer,
+        (LPVOID) ((QWORD64) lpCooldownTimer + JMP_OFFSET),
         sizeof(abOriginalBytes),
         dwOldProtect,
         &dwOldProtect
